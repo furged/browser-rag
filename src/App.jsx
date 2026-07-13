@@ -1,7 +1,4 @@
-
-
-
-import { cosineSimilarity } from "./utils/similarity";
+import { semanticSearch } from "./utils/semanticSearch";
 import documents from "./data/documents";
 import { useEffect, useState } from "react";
 import {
@@ -11,21 +8,11 @@ import {
 
 function App() {
     const [processedDocuments, setProcessedDocuments] = useState([]);
+
+    // Generate document embeddings once
     useEffect(() => {
-        
-
-        async function test() {
-            
-
+        async function initialize() {
             await initializeModel();
-
-            const cat = await generateEmbedding("Cats are mammals.");
-            const dog = await generateEmbedding("Dogs are loyal animals.");
-            const fish = await generateEmbedding("Fish live in water.");
-
-            console.log(cosineSimilarity(cat, cat));
-            console.log(cosineSimilarity(cat, dog));
-            console.log(cosineSimilarity(cat, fish));
 
             const processed = [];
 
@@ -37,15 +24,37 @@ function App() {
                     embedding,
                 });
             }
+
             setProcessedDocuments(processed);
         }
 
-        test();
-
+        initialize();
     }, []);
-    
+
+    // Debug: See processed documents
     useEffect(() => {
         console.log(processedDocuments);
+    }, [processedDocuments]);
+
+    // Test semantic search
+    useEffect(() => {
+        if (processedDocuments.length === 0) return;
+
+        async function search() {
+            const results = await semanticSearch(
+                "Tell me about domestic animals",
+                processedDocuments
+            );
+
+            console.table(
+                results.map((doc) => ({
+                    title: doc.title,
+                    similarity: doc.similarity,
+                }))
+            );
+        }
+
+        search();
     }, [processedDocuments]);
 
     return (
