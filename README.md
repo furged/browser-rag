@@ -12,9 +12,7 @@ No LangChain.
 
 No LlamaIndex.
 
-Everything—from document ingestion to semantic retrieval—runs locally inside the browser.
-
-The purpose of this project is educational: understand how modern RAG systems work by implementing each component manually.
+Everything, from document ingestion to semantic retrieval runs locally inside the browser.
 
 ---
 
@@ -66,20 +64,6 @@ Top-K Retrieval
 
 ---
 
-## Project Structure
-
-```text
-src
-├── utils/
-│   ├── embeddings.js
-│   ├── pdfParser.js
-│   ├── chunkText.js
-│   ├── similarity.js
-│   └── semanticSearch.js
-└── App.jsx
-```
-
----
 
 ## Current Architecture
 
