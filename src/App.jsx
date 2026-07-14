@@ -1,5 +1,6 @@
+import { chunkText } from "./utils/chunkText";
+import { extractTextFromPDF } from "./utils/pdfParser";
 import { semanticSearch } from "./utils/semanticSearch";
-import documents from "./data/documents";
 import { useEffect, useState } from "react";
 import {
     initializeModel,
@@ -7,60 +8,110 @@ import {
 } from "./utils/embeddings";
 
 function App() {
-    const [processedDocuments, setProcessedDocuments] = useState([]);
+    const [processedChunks, setProcessedChunks] = useState([]);
+    const [query, setQuery] = useState("");
+    const [results, setResults] = useState([]);
 
-    // Generate document embeddings once
+    // Load embedding model once
     useEffect(() => {
         async function initialize() {
             await initializeModel();
-
-            const processed = [];
-
-            for (const document of documents) {
-                const embedding = await generateEmbedding(document.text);
-
-                processed.push({
-                    ...document,
-                    embedding,
-                });
-            }
-
-            setProcessedDocuments(processed);
         }
 
         initialize();
     }, []);
 
-    // Debug: See processed documents
-    useEffect(() => {
-        console.log(processedDocuments);
-    }, [processedDocuments]);
+    async function handlePDFUpload(event) {
+        const file = event.target.files[0];
 
-    // Test semantic search
-    useEffect(() => {
-        if (processedDocuments.length === 0) return;
+        if (!file) return;
 
-        async function search() {
-            const results = await semanticSearch(
-                "Tell me about domestic animals",
-                processedDocuments
-            );
+        try {
+            // Extract text
+            const text = await extractTextFromPDF(file);
 
-            console.table(
-                results.map((doc) => ({
-                    title: doc.title,
-                    similarity: doc.similarity,
-                }))
-            );
+            // Split into chunks
+            const chunks = chunkText(text);
+
+            // Generate embeddings
+            const processed = [];
+
+            for (let i = 0; i < chunks.length; i++) {
+                const embedding = await generateEmbedding(chunks[i]);
+
+                processed.push({
+                    id: i,
+                    text: chunks[i],
+                    embedding,
+                });
+            }
+
+            setProcessedChunks(processed);
+
+            console.log("PDF indexed successfully!");
+        } catch (error) {
+            console.error("Error processing PDF:", error);
+        }
+    }
+
+    async function handleSearch() {
+        if (!query.trim()) return;
+
+        if (processedChunks.length === 0) {
+            alert("Please upload a PDF first.");
+            return;
         }
 
-        search();
-    }, [processedDocuments]);
+        const searchResults = await semanticSearch(
+            query,
+            processedChunks
+        );
+
+        setResults(searchResults.slice(0, 5));
+    }
 
     return (
         <div>
-            <h1>Browser RAG V4</h1>
-            <p>Generating embeddings...</p>
+            <h1>Browser RAG V5</h1>
+
+            <p>Upload a PDF to build a local knowledge base.</p>
+
+            <input
+                type="file"
+                accept=".pdf"
+                onChange={handlePDFUpload}
+            />
+
+            <br />
+            <br />
+
+            <input
+                type="text"
+                placeholder="Ask your PDF..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+            />
+
+            <button
+                onClick={handleSearch}
+                disabled={processedChunks.length === 0}
+            >
+                Search
+            </button>
+
+            <hr />
+
+            {results.map((chunk) => (
+                <div key={chunk.id}>
+                    <h3>
+                        Similarity: {chunk.similarity.toFixed(3)}
+                    </h3>
+
+                    <p>{chunk.text}</p>
+
+                    <hr />
+                </div>
+            ))}
         </div>
     );
 }
