@@ -1,5 +1,5 @@
 const DB_NAME = "BrowserRAG";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export async function openDatabase() {
     return new Promise((resolve, reject) => {
@@ -15,10 +15,18 @@ export async function openDatabase() {
 
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
-            
-            db.createObjectStore("chunks", {
-                keyPath: "id",
-            });
+
+            if (!db.objectStoreNames.contains("documents")) {
+                db.createObjectStore("documents", {
+                    keyPath: "id",
+                });
+            }
+
+            if (!db.objectStoreNames.contains("chunks")) {
+                db.createObjectStore("chunks", {
+                    keyPath: "id",
+                });
+            }
         };
     });
 }
@@ -39,14 +47,18 @@ export async function saveChunks(chunks) {
     });
 }
 
-export async function loadChunks() {
+export async function loadChunks(documentId) {
     const db = await openDatabase();
     const transaction = db.transaction("chunks", "readonly");
     const store = transaction.objectStore("chunks");
     const request = store.getAll();
     return new Promise((resolve, reject) => {
         request.onsuccess = () => {
-            resolve(request.result);
+            const chunks = request.result.filter(
+                chunk => chunk.documentId === documentId
+            );
+
+            resolve(chunks);
         };
 
         request.onerror = () => {
@@ -70,4 +82,86 @@ export async function clearChunks() {
         };
     });
 
+}
+
+export async function saveDocument(document) {
+    const db = await openDatabase();
+
+    const transaction = db.transaction("documents", "readwrite");
+
+    const store = transaction.objectStore("documents");
+
+    store.put(document);
+
+    await new Promise((resolve, reject) => {
+        transaction.oncomplete = () => resolve();
+
+        transaction.onerror = () => reject(transaction.error);
+
+        transaction.onabort = () => reject(transaction.error);
+    });
+}
+
+export async function loadDocuments() {
+    const db = await openDatabase();
+
+    const transaction = db.transaction("documents", "readonly");
+
+    const store = transaction.objectStore("documents");
+
+    const request = store.getAll();
+
+    return new Promise((resolve, reject) => {
+        request.onsuccess = () => {
+            resolve(request.result);
+        };
+
+        request.onerror = () => {
+            reject(request.error);
+        };
+    });
+}
+
+export async function deleteDocument(documentId) {
+    const db = await openDatabase();
+
+    const transaction = db.transaction("documents", "readwrite");
+    const store = transaction.objectStore("documents");
+
+    const request = store.delete(documentId);
+
+    return new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve();
+
+        request.onerror = () => reject(request.error);
+    });
+}
+
+export async function deleteChunks(documentId) {
+    const db = await openDatabase();
+
+    const transaction = db.transaction("chunks", "readwrite");
+    const store = transaction.objectStore("chunks");
+
+    const request = store.getAll();
+
+    return new Promise((resolve, reject) => {
+        request.onsuccess = () => {
+            const chunks = request.result.filter(
+                chunk => chunk.documentId === documentId
+            );
+
+            for (const chunk of chunks) {
+                store.delete(chunk.id);
+            }
+        };
+
+        request.onerror = () => reject(request.error);
+
+        transaction.oncomplete = () => resolve();
+
+        transaction.onerror = () => reject(transaction.error);
+
+        transaction.onabort = () => reject(transaction.error);
+    });
 }

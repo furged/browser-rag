@@ -6,24 +6,41 @@ import {
     initializeModel,
     generateEmbedding,
 } from "./utils/embeddings";
-import { saveChunks, loadChunks, clearChunks } from "./utils/database";
+import { 
+    saveChunks,
+    loadChunks,
+    clearChunks,
+    saveDocument,
+    loadDocuments,
+    deleteChunks,
+    deleteDocument
+ } from "./utils/database";
 
 function App() {
     const [processedChunks, setProcessedChunks] = useState([]);
+    const [documents, setDocuments] = useState([]);
     const [query, setQuery] = useState("");
     const [results, setResults] = useState([]);
+    const [selectedDocument, setSelectedDocument] = useState(null);
 
     // Load embedding model once
     useEffect(() => {
         async function initialize() {
             await initializeModel();
 
-            const savedChunks = await loadChunks();
-            console.log("Loaded chunks:", savedChunks);
+            const savedDocuments = await loadDocuments();
+            setDocuments(savedDocuments);
 
-            if (savedChunks.length > 0) {
+            if (savedDocuments.length > 0) {
+                const latestDocument = savedDocuments[savedDocuments.length - 1];
+
+                setSelectedDocument(latestDocument);
+
+                const savedChunks = await loadChunks(latestDocument.id);
                 setProcessedChunks(savedChunks);
             }
+
+            
         }
 
         initialize();
@@ -31,12 +48,28 @@ function App() {
 
     async function handlePDFUpload(event) {
         console.log("handlePDFUpload called");
+
         const file = event.target.files[0];
         console.log("1. File selected");
 
         if (!file) return;
 
+        const document = {
+            id: crypto.randomUUID(),
+            filename: file.name,
+            uploadTime: Date.now(),
+        };
+
         try {
+            // Save document metadata
+            await saveDocument(document);
+
+            const updatedDocuments = await loadDocuments();
+
+            console.log(updatedDocuments);
+
+            setDocuments(updatedDocuments);
+
             // Extract text
             const text = await extractTextFromPDF(file);
             console.log("2. PDF parsed");
@@ -45,7 +78,6 @@ function App() {
             const chunks = chunkText(text);
             console.log("3. Chunks:", chunks.length);
 
-
             // Generate embeddings
             const processed = [];
 
@@ -53,25 +85,41 @@ function App() {
                 const embedding = await generateEmbedding(chunks[i]);
 
                 processed.push({
-                    id: i,
+                    id: crypto.randomUUID(),
+                    documentId: document.id,
                     text: chunks[i],
                     embedding,
                 });
             }
+
             console.log("4. Embeddings generated");
 
-            await clearChunks();
-
+            // Save chunks
             await saveChunks(processed);
             console.log("Saved:", processed.length);
 
+            
+
+            // Display the newly uploaded document
             setProcessedChunks(processed);
-            console.log("PDF indexed successfully");
+            setSelectedDocument(document);
 
             console.log("PDF indexed successfully!");
         } catch (error) {
             console.error("Error processing PDF:", error);
         }
+    }
+
+    async function handleDocumentSelect(document) {
+        console.log("Selected:", document.filename);
+
+        setSelectedDocument(document);
+
+        const chunks = await loadChunks(document.id);
+
+        console.log("Loaded chunks:", chunks);
+
+        setProcessedChunks(chunks);
     }
 
     async function handleSearch() {
@@ -88,6 +136,33 @@ function App() {
         );
 
         setResults(searchResults.slice(0, 5));
+    }
+
+    async function handleDeleteDocument(document) {
+        try {
+            await deleteChunks(document.id);
+
+            await deleteDocument(document.id);
+
+            const updatedDocuments = await loadDocuments();
+            setDocuments(updatedDocuments);
+
+            if (updatedDocuments.length === 0) {
+                setSelectedDocument(null);
+                setProcessedChunks([]);
+                return;
+            }
+
+            const nextDocument = updatedDocuments[0];
+
+            setSelectedDocument(nextDocument);
+
+            const chunks = await loadChunks(nextDocument.id);
+            setProcessedChunks(chunks);
+
+        } catch (error) {
+            console.error("Error deleting document:", error);
+        }
     }
 
     return (
@@ -118,6 +193,38 @@ function App() {
             >
                 Search
             </button>
+
+            <h3>Documents</h3>
+
+                {documents.map((document) => (
+                    <div
+                        key={document.id}
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            marginBottom: "8px",
+                        }}
+                    >
+                        <button
+                            onClick={() => handleDocumentSelect(document)}
+                            style={{
+                                fontWeight:
+                                    selectedDocument?.id === document.id
+                                        ? "bold"
+                                        : "normal",
+                            }}
+                        >
+                            {document.filename}
+                        </button>
+
+                        <button
+                            onClick={() => handleDeleteDocument(document)}
+                        >
+                            🗑
+                        </button>
+                    </div>
+                ))}
 
             <hr />
 
