@@ -1,4 +1,4 @@
-# BrowserRAG
+# NativeRAG
 
 > A Retrieval-Augmented Generation system built completely inside the browser.
 >
@@ -8,7 +8,7 @@
 
 ---
 
-## The Idea
+## So.. Why does this exist?
 
 Most RAG tutorials skip straight to frameworks.
 
@@ -38,7 +38,7 @@ Semantic Retrieval
 
 ---
 
-## Current State
+## What it can do (so far)
 
 BrowserRAG is currently capable of:
 
@@ -58,7 +58,7 @@ Everything happens locally.
 
 ---
 
-## Engineering Decisions
+## Engineering decisions 
 
 ### Browser-side only
 
@@ -90,7 +90,7 @@ from scratch before retrieval.
 
 ---
 
-### PDF Chunking
+### PDFs are weird
 
 Character-based chunking was rejected.
 
@@ -125,7 +125,7 @@ Each chunk belongs to exactly one document through `documentId`, creating a one-
 
 ---
 
-## Evolution
+## Evolution 
 
 | Version | Focus |
 |---------|-------|
@@ -162,23 +162,23 @@ Only after understanding those pieces will the project introduce a local languag
 
 ---
 
-## Tech Stack
+## Crew
 
 <p>
 
-<img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black"/>
+<img src="https://img.shields.io/badge/React-19-61DAFB?style=plastic&logo=react&logoColor=black"/>
 
-<img src="https://img.shields.io/badge/Vite-7-646CFF?style=for-the-badge&logo=vite&logoColor=white"/>
+<img src="https://img.shields.io/badge/Vite-7-646CFF?style=plastic&logo=vite&logoColor=white"/>
 
-<img src="https://img.shields.io/badge/JavaScript-ES2023-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black"/>
+<img src="https://img.shields.io/badge/JavaScript-ES2023-F7DF1E?style=plastic&logo=javascript&logoColor=black"/>
 
-<img src="https://img.shields.io/badge/PDF.js-pdfjs--dist-B30B00?style=for-the-badge"/>
+<img src="https://img.shields.io/badge/PDF.js-pdfjs--dist-B30B00?style=plastic"/>
 
-<img src="https://img.shields.io/badge/HuggingFace-Transformers-FFD21E?style=for-the-badge"/>
+<img src="https://img.shields.io/badge/HuggingFace-Transformers-FFD21E?style=plastic"/>
 
-<img src="https://img.shields.io/badge/Model-Supabase%2Fgte--small-3ECF8E?style=for-the-badge"/>
+<img src="https://img.shields.io/badge/Model-Supabase%2Fgte--small-3ECF8E?style=plastic"/>
 
-<img src="https://img.shields.io/badge/IndexedDB-Browser%20Storage-4A90E2?style=for-the-badge"/>
+<img src="https://img.shields.io/badge/IndexedDB-Browser%20Storage-4A90E2?style=plastic"/>
 
 </p>
 
