@@ -6,6 +6,7 @@ import {
     initializeModel,
     generateEmbedding,
 } from "./utils/embeddings";
+import { saveChunks, loadChunks, clearChunks } from "./utils/database";
 
 function App() {
     const [processedChunks, setProcessedChunks] = useState([]);
@@ -16,22 +17,34 @@ function App() {
     useEffect(() => {
         async function initialize() {
             await initializeModel();
+
+            const savedChunks = await loadChunks();
+            console.log("Loaded chunks:", savedChunks);
+
+            if (savedChunks.length > 0) {
+                setProcessedChunks(savedChunks);
+            }
         }
 
         initialize();
     }, []);
 
     async function handlePDFUpload(event) {
+        console.log("handlePDFUpload called");
         const file = event.target.files[0];
+        console.log("1. File selected");
 
         if (!file) return;
 
         try {
             // Extract text
             const text = await extractTextFromPDF(file);
+            console.log("2. PDF parsed");
 
             // Split into chunks
             const chunks = chunkText(text);
+            console.log("3. Chunks:", chunks.length);
+
 
             // Generate embeddings
             const processed = [];
@@ -45,8 +58,15 @@ function App() {
                     embedding,
                 });
             }
+            console.log("4. Embeddings generated");
+
+            await clearChunks();
+
+            await saveChunks(processed);
+            console.log("Saved:", processed.length);
 
             setProcessedChunks(processed);
+            console.log("PDF indexed successfully");
 
             console.log("PDF indexed successfully!");
         } catch (error) {
@@ -72,7 +92,7 @@ function App() {
 
     return (
         <div>
-            <h1>Browser RAG V5</h1>
+            <h1>Browser RAG V6</h1>
 
             <p>Upload a PDF to build a local knowledge base.</p>
 

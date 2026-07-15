@@ -1,125 +1,178 @@
-# Browser RAG
+# Browser RAG — Version 6
 
-A fully browser-side Retrieval-Augmented Generation (RAG) system built completely from scratch.
+> A browser is no longer just the interface. It is now the vector database.
 
-No backend.
+Version 6 solves one of the biggest inefficiencies in the previous iterations.
 
-No vector database.
-
-No OpenAI API.
-
-No LangChain.
-
-No LlamaIndex.
-
-Everything, from document ingestion to semantic retrieval runs locally inside the browser.
-
----
-
-## Pipeline
+Until now, every page refresh meant rebuilding the entire retrieval pipeline.
 
 ```text
 Upload PDF
-      ↓
+    ↓
 Extract Text
-      ↓
-Sentence-aware Chunking
-      ↓
-Chunk Overlap
-      ↓
-Local Embeddings
-      ↓
-Semantic Search
-      ↓
-Cosine Similarity
-      ↓
-Top-K Retrieval
-      ↓
-(Local LLM - WIP)
+    ↓
+Chunk
+    ↓
+Generate Embeddings
+    ↓
+Search
 ```
 
----
+That worked, but only as long as the page stayed alive.
 
-## Current Features
+The moment the browser refreshed, every embedding disappeared and the entire indexing process had to be repeated.
 
-- Browser-side PDF upload
-- PDF text extraction
-- Sentence-aware chunking
-- Chunk overlap
-- Local embedding generation (`Supabase/gte-small`)
-- Manual cosine similarity implementation
-- Semantic search
-- Top-K retrieval
-- Interactive search interface
-- 100% browser-side execution
+This version changes that.
 
 ---
 
-## Tech Stack
+## The Architectural Shift
 
-- React
-- Vite
-- Transformers.js (`@huggingface/transformers`)
-- PDF.js (`pdfjs-dist`)
+The browser now persists embeddings locally using **IndexedDB**, allowing the retrieval pipeline to survive page refreshes without relying on any backend, vector database, or cloud storage.
 
----
-
-
-## Current Architecture
+The browser itself becomes the vector store.
 
 ```text
-User Uploads PDF
-        ↓
-Extract Text
-        ↓
-Chunk Text
-        ↓
-Generate Embeddings
-        ↓
-Store Processed Chunks
+                First Upload
 
-────────────────────────────
+          PDF
+           │
+           ▼
+     Text Extraction
+           │
+           ▼
+        Chunking
+           │
+           ▼
+ Local Embedding Generation
+           │
+           ▼
+       IndexedDB Storage
 
-User Query
-        ↓
-Generate Query Embedding
-        ↓
-Cosine Similarity
-        ↓
-Top-K Chunks
-        ↓
-Display Results
+──────────────────────────────────────────────
+
+             Next Browser Launch
+
+           IndexedDB
+               │
+               ▼
+      Load Stored Embeddings
+               │
+               ▼
+      Semantic Search Ready
 ```
 
 ---
 
-## Roadmap
+## What Changed
 
-- [x] Keyword search
-- [x] Fuzzy search
-- [x] Local embedding generation
-- [x] Semantic retrieval
-- [x] PDF ingestion
-- [x] Sentence-aware chunking
-- [x] Chunk overlap
-- [x] Top-K retrieval
-- [ ] Browser vector store (IndexedDB)
-- [ ] Local LLM inference
-- [ ] Streaming responses
-- [ ] Multi-document support
+Instead of treating embeddings as temporary application state, they are now persisted as browser data.
+
+Every indexed chunk is stored together with its embedding and restored automatically when the application starts.
+
+The retrieval system no longer depends on the indexing pipeline after the first upload.
 
 ---
 
-## Why build this?
+## Browser Database
 
-Most RAG tutorials rely on frameworks that hide the retrieval pipeline behind a few API calls.
+The project now includes a lightweight persistence layer built directly on top of IndexedDB.
 
-This project intentionally implements the individual components manually to understand how retrieval actually works:
+Current schema:
 
-- Embedding generation
-- Chunking strategies
-- Vector similarity
-- Semantic retrieval
-- Browser-side inference
+```text
+BrowserRAG
+│
+└── chunks
+      ├── id
+      ├── text
+      └── embedding
+```
 
-The long-term goal is to build a complete browser-native RAG system where every stage runs locally without external AI services.
+The database layer exposes a minimal API:
+
+```javascript
+openDatabase()
+saveChunks(chunks)
+loadChunks()
+clearChunks()
+```
+
+No wrappers.
+
+No abstraction libraries.
+
+Just the browser API.
+
+---
+
+## Why IndexedDB?
+
+Embeddings are numerical vectors.
+
+Persisting thousands of vectors inside LocalStorage is neither practical nor scalable.
+
+IndexedDB allows structured objects, asynchronous operations, and significantly larger storage capacity while remaining entirely client-side.
+
+---
+
+## Current Pipeline
+
+```text
+PDF
+ │
+ ▼
+Extract Text
+ │
+ ▼
+Sentence-aware Chunking
+ │
+ ▼
+Generate Embeddings
+ │
+ ▼
+Persist in IndexedDB
+ │
+ ▼
+User Query
+ │
+ ▼
+Query Embedding
+ │
+ ▼
+Cosine Similarity
+ │
+ ▼
+Top-K Retrieval
+```
+
+---
+
+## What This Version Does Not Solve
+
+Version 6 intentionally supports a **single indexed document**.
+
+Uploading another PDF replaces the previously indexed knowledge base.
+
+Supporting multiple documents requires document metadata, relationships between documents and chunks, and selective retrieval.
+
+That evolution is intentionally postponed for the next version.
+
+---
+
+## Why This Matters
+
+Most RAG demos stop after generating embeddings.
+
+Version 6 focuses on what production systems actually do:
+
+- avoid recomputing embeddings
+- persist vector representations
+- restore retrieval state instantly
+- keep everything local to the user's machine
+
+The result is a browser-native retrieval system that no longer loses its memory after every refresh.
+
+---
+
+Version 6 completes the transition from an in-memory prototype to a persistent browser-side retrieval engine.
