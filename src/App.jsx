@@ -1,4 +1,5 @@
 import { chunkText } from "./utils/chunkText";
+import { initializeLLM, generateAnswer } from "./utils/llm";
 import { extractTextFromPDF } from "./utils/pdfParser";
 import { semanticSearch } from "./utils/semanticSearch";
 import { useEffect, useState } from "react";
@@ -22,25 +23,33 @@ function App() {
     const [query, setQuery] = useState("");
     const [results, setResults] = useState([]);
     const [selectedDocument, setSelectedDocument] = useState(null);
+    const [answer, setAnswer] = useState("");
+    const [isModelLoading, setIsModelLoading] = useState(true);
+    const [isIndexing, setIsIndexing] = useState("");
+    const [isGenerating, setIsGenerating] = useState(false);
 
     // Load embedding model once
     useEffect(() => {
         async function initialize() {
+            setIsModelLoading(true);
+
             await initializeModel();
+            await initializeLLM();
+
+            setIsModelLoading(false);
 
             const savedDocuments = await loadDocuments();
             setDocuments(savedDocuments);
 
             if (savedDocuments.length > 0) {
-                const latestDocument = savedDocuments[savedDocuments.length - 1];
+                const latestDocument =
+                    savedDocuments[savedDocuments.length - 1];
 
                 setSelectedDocument(latestDocument);
 
                 const savedChunks = await loadChunks(latestDocument.id);
                 setProcessedChunks(savedChunks);
             }
-
-            
         }
 
         initialize();
@@ -53,6 +62,7 @@ function App() {
         console.log("1. File selected");
 
         if (!file) return;
+        setIsIndexing("Parsing PDF...");
 
         const document = {
             id: crypto.randomUUID(),
@@ -76,17 +86,22 @@ function App() {
 
             // Split into chunks
             const chunks = chunkText(text);
+            setIsIndexing(`Generating embeddings (0/${chunks.length})...`);
             console.log("3. Chunks:", chunks.length);
 
             // Generate embeddings
             const processed = [];
 
             for (let i = 0; i < chunks.length; i++) {
+                setIsIndexing(
+                    `Generating embeddings (${i + 1}/${chunks.length})...`
+                );
                 const embedding = await generateEmbedding(chunks[i]);
 
                 processed.push({
                     id: crypto.randomUUID(),
                     documentId: document.id,
+                    chunkNumber: i+1,
                     text: chunks[i],
                     embedding,
                 });
@@ -95,6 +110,7 @@ function App() {
             console.log("4. Embeddings generated");
 
             // Save chunks
+            setIsIndexing("Saving to database...");
             await saveChunks(processed);
             console.log("Saved:", processed.length);
 
@@ -105,8 +121,10 @@ function App() {
             setSelectedDocument(document);
 
             console.log("PDF indexed successfully!");
+            setIsIndexing(false);
         } catch (error) {
             console.error("Error processing PDF:", error);
+            setIsIndexing(false);
         }
     }
 
@@ -124,18 +142,46 @@ function App() {
 
     async function handleSearch() {
         if (!query.trim()) return;
+        setAnswer("");
 
         if (processedChunks.length === 0) {
             alert("Please upload a PDF first.");
             return;
         }
 
-        const searchResults = await semanticSearch(
-            query,
-            processedChunks
-        );
+        try {
+            setIsGenerating(true);
 
-        setResults(searchResults.slice(0, 5));
+            const searchResults = await semanticSearch(
+                query,
+                processedChunks
+            );
+
+            if (searchResults.length === 0) {
+                alert("No relevant information found.");
+                return;
+            }
+
+            const topChunks = searchResults.slice(0, 2);
+
+            const context = topChunks
+                .map(chunk => chunk.text)
+                .join("\n\n");
+
+            await new Promise(resolve => setTimeout(resolve, 0));
+
+            const generatedAnswer = await generateAnswer(
+                query,
+                context
+            );
+
+            setAnswer(generatedAnswer);
+            setResults(searchResults.slice(0, 5));
+        } catch (error) {
+            console.error("Error generating answer:", error);
+        } finally {
+            setIsGenerating(false);
+        }
     }
 
     async function handleDeleteDocument(document) {
@@ -167,14 +213,24 @@ function App() {
 
     return (
         <div>
-            <h1>Browser RAG V6</h1>
+            <h1>Browser RAG V7</h1>
 
             <p>Upload a PDF to build a local knowledge base.</p>
+
+            {isModelLoading && (
+                <p>Loading AI models... Please wait.</p>
+            )}
+
+            {isIndexing && (
+                <p>{isIndexing}</p>
+            )}
+
 
             <input
                 type="file"
                 accept=".pdf"
                 onChange={handlePDFUpload}
+                disabled={isModelLoading || isIndexing}
             />
 
             <br />
@@ -189,9 +245,13 @@ function App() {
 
             <button
                 onClick={handleSearch}
-                disabled={processedChunks.length === 0}
+                disabled={processedChunks.length === 0 || 
+                    isModelLoading ||
+                    isIndexing ||
+                    isGenerating
+                }
             >
-                Search
+                {isGenerating ? "Generating..." : "Search"}
             </button>
 
             <h3>Documents</h3>
@@ -228,11 +288,28 @@ function App() {
 
             <hr />
 
+            {isGenerating && (
+                <p>Generating answer...</p>
+            )}
+
+            {answer && (
+                <>
+                    <h2>Answer</h2>
+
+                    <p>{answer}</p>
+
+                    <hr />
+                </>
+            )}
+
             {results.map((chunk) => (
                 <div key={chunk.id}>
                     <h3>
-                        Similarity: {chunk.similarity.toFixed(3)}
-                    </h3>
+                        Similarity: {(chunk.similarity * 100).toFixed(1)}%                    </h3>
+
+                    <p>
+                        <strong>Chunk:</strong> {chunk.chunkNumber}
+                    </p>
 
                     <p>{chunk.text}</p>
 

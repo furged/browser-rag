@@ -17,5 +17,5 @@ export async function semanticSearch(query, processedDocuments) {
     }
 
     results.sort((a, b) => b.similarity - a.similarity);
-    return results.slice(0, 3);
+    return results;
 }

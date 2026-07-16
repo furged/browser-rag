@@ -1,5 +1,5 @@
 const DB_NAME = "BrowserRAG";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export async function openDatabase() {
     return new Promise((resolve, reject) => {
@@ -22,9 +22,19 @@ export async function openDatabase() {
                 });
             }
 
+            let chunkStore;
+
             if (!db.objectStoreNames.contains("chunks")) {
-                db.createObjectStore("chunks", {
+                chunkStore = db.createObjectStore("chunks", {
                     keyPath: "id",
+                });
+            } else {
+                chunkStore = event.target.transaction.objectStore("chunks");
+            }
+
+            if (!chunkStore.indexNames.contains("documentId")) {
+                chunkStore.createIndex("documentId", "documentId", {
+                    unique: false,
                 });
             }
         };
@@ -49,22 +59,23 @@ export async function saveChunks(chunks) {
 
 export async function loadChunks(documentId) {
     const db = await openDatabase();
+
     const transaction = db.transaction("chunks", "readonly");
     const store = transaction.objectStore("chunks");
-    const request = store.getAll();
+
+    const index = store.index("documentId");
+
+    const request = index.getAll(IDBKeyRange.only(documentId));
+
     return new Promise((resolve, reject) => {
         request.onsuccess = () => {
-            const chunks = request.result.filter(
-                chunk => chunk.documentId === documentId
-            );
-
-            resolve(chunks);
+            resolve(request.result);
         };
 
         request.onerror = () => {
             reject(request.error);
         };
-    })
+    });
 }
 
 export async function clearChunks() {
@@ -143,13 +154,15 @@ export async function deleteChunks(documentId) {
     const transaction = db.transaction("chunks", "readwrite");
     const store = transaction.objectStore("chunks");
 
-    const request = store.getAll();
+    const index = store.index("documentId");
+
+    const request = index.getAll(
+        IDBKeyRange.only(documentId)
+    );
 
     return new Promise((resolve, reject) => {
         request.onsuccess = () => {
-            const chunks = request.result.filter(
-                chunk => chunk.documentId === documentId
-            );
+            const chunks = request.result;
 
             for (const chunk of chunks) {
                 store.delete(chunk.id);

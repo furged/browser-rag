@@ -26,3 +26,7 @@ export async function extractTextFromPDF(file) {
 
     return fullText;
 }
+
+export async function extractPagesFromPDF(file) {
+    
+}
