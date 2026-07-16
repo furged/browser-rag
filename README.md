@@ -4,7 +4,7 @@
 >
 > No backend. No APIs. No vector database. No LangChain. No LlamaIndex.
 >
-> Just JavaScript, React, IndexedDB, local embeddings, and a lot of curiosity.
+> Just JavaScript, React, IndexedDB, local embeddings, local LLMs, and a lot of curiosity.
 
 ---
 
@@ -16,7 +16,7 @@ This project does the opposite.
 
 Every major component is implemented manually to understand what actually happens behind libraries like LangChain, LlamaIndex, Pinecone, or ChromaDB.
 
-Instead of treating RAG as a black box, BrowserRAG builds every layer from scratch.
+Instead of treating RAG as a black box, NativeRAG builds every layer from scratch.
 
 ```text
 PDF
@@ -25,22 +25,24 @@ Text Extraction
  ↓
 Sentence Chunking
  ↓
-Embedding Generation
+Local Embedding Generation
  ↓
-Browser Vector Database
+IndexedDB Vector Store
  ↓
-Cosine Similarity
+Cosine Similarity Search
  ↓
-Semantic Retrieval
+Top-K Retrieval
  ↓
-(Local LLM coming next)
+Local LLM Inference
+ ↓
+Grounded Answer
 ```
 
 ---
 
 ## What it can do (so far)
 
-BrowserRAG is currently capable of:
+NativeRAG is currently capable of:
 
 - Uploading multiple PDFs
 - Extracting text entirely in the browser
@@ -48,6 +50,9 @@ BrowserRAG is currently capable of:
 - Local embedding generation
 - Persistent browser-side vector storage
 - Semantic search using cosine similarity
+- Retrieval-Augmented Generation (RAG)
+- Browser-side LLM inference
+- Context-aware answer generation
 - Multi-document management
 - Individual document deletion
 - Zero backend infrastructure
@@ -56,9 +61,11 @@ No server is involved.
 
 Everything happens locally.
 
+The browser acts as both the application server and the inference engine, making the project completely self-contained after the initial model download.
+
 ---
 
-## Engineering decisions 
+## Engineering decisions
 
 ### Browser-side only
 
@@ -71,6 +78,7 @@ There is:
 - No Supabase database
 - No OpenAI API
 - No hosted embedding service
+- No hosted inference endpoint
 
 The browser performs every operation itself.
 
@@ -96,7 +104,7 @@ Character-based chunking was rejected.
 
 Paragraph chunking was also rejected because PDFs frequently lose formatting.
 
-Instead, BrowserRAG performs sentence-aware chunking with configurable overlap to preserve context across neighboring chunks.
+Instead, NativeRAG performs sentence-aware chunking with configurable overlap to preserve context across neighboring chunks.
 
 ---
 
@@ -107,7 +115,7 @@ Instead of introducing Pinecone or ChromaDB, embeddings are stored inside Indexe
 Current architecture:
 
 ```text
-BrowserRAG
+NativeRAG
 
 documents
     id
@@ -125,7 +133,17 @@ Each chunk belongs to exactly one document through `documentId`, creating a one-
 
 ---
 
-## Evolution 
+### Local Language Model
+
+The generation stage also runs completely inside the browser.
+
+Instead of calling an external API, NativeRAG executes a local transformer model using Hugging Face Transformers.js.
+
+The retrieval pipeline first finds the most relevant document chunks, then injects them as context for the language model, producing grounded answers without sending user data to any external service.
+
+---
+
+## Evolution
 
 | Version | Focus |
 |---------|-------|
@@ -136,6 +154,7 @@ Each chunk belongs to exactly one document through `documentId`, creating a one-
 | V5 | PDF ingestion + intelligent chunking |
 | V6 | IndexedDB persistence |
 | **V6.5** | Multi-document browser vector database |
+| **V7** | Local LLM inference + end-to-end RAG |
 
 Every version builds on the previous one rather than replacing it.
 
@@ -154,11 +173,12 @@ That means implementing:
 - Embeddings
 - Vector storage
 - Retrieval
+- Local inference
 - Document management
 
 manually.
 
-Only after understanding those pieces will the project introduce a local language model.
+Only after understanding those pieces was a local language model introduced, completing the first end-to-end Retrieval-Augmented Generation pipeline for the project.
 
 ---
 
@@ -176,7 +196,9 @@ Only after understanding those pieces will the project introduce a local languag
 
 <img src="https://img.shields.io/badge/HuggingFace-Transformers-FFD21E?style=plastic"/>
 
-<img src="https://img.shields.io/badge/Model-Supabase%2Fgte--small-3ECF8E?style=plastic"/>
+<img src="https://img.shields.io/badge/Embedding-Supabase%2Fgte--small-3ECF8E?style=plastic"/>
+
+<img src="https://img.shields.io/badge/LLM-SmolLM2--360M-FF6B6B?style=plastic"/>
 
 <img src="https://img.shields.io/badge/IndexedDB-Browser%20Storage-4A90E2?style=plastic"/>
 
@@ -186,18 +208,24 @@ Only after understanding those pieces will the project introduce a local languag
 
 ## What comes next
 
-Version 6.6 focuses on making the browser vector database smarter.
+Version 7.1 focuses on improving answer quality rather than adding new features.
 
 Planned improvements:
 
-- IndexedDB indexes
-- Efficient retrieval
-- Efficient deletion
-- Eliminate full database scans
+- Better chunk retrieval
+- Chunk reranking
+- Improved prompting
+- Better citations for generated answers
+- Faster browser-side inference
+- Higher quality grounded responses
 
 After that:
 
-Version 7 introduces browser-side LLM inference, completing the Retrieval-Augmented Generation pipeline.
+- Hybrid search (keyword + semantic)
+- Streaming responses
+- Conversation memory
+- Better vector indexing
+- Swappable local language models
 
 ---
 
