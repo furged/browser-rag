@@ -30,5 +30,25 @@ export function chunkText(text, chunkSize = 500, overlap = 1) {
         chunks.push(currentSentences.join(" "));
     }
 
+    // temporary debug logs
+    console.log("Number of chunks:", chunks.length);
+
+    const lengths = chunks.map(chunk => chunk.length);
+
+    console.log(
+        "Average chunk length:",
+        Math.round(lengths.reduce((a, b) => a + b, 0) / lengths.length)
+    );
+
+    console.log("Smallest chunk:", Math.min(...lengths));
+    console.log("Largest chunk:", Math.max(...lengths));
+
+    console.log("First chunk:");
+    console.log(chunks[0]);
+
+    console.log("Last chunk:");
+    console.log(chunks[chunks.length - 1]);
+    // ---
+
     return chunks;
 }
