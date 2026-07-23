@@ -9,7 +9,11 @@ export async function initializeLLM() {
 
     generator = await pipeline(
         "text-generation",
-        "onnx-community/Qwen2.5-0.5B-Instruct"
+        "onnx-community/Llama-3.2-1B-Instruct",
+        {
+            device: "wasm",
+            dtype: "q8",
+        }
     );
 
     console.log("LLM loaded");
